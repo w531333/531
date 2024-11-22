@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>531的网页</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>531的网页</h1>
+        </header>
+
+        <main>
+            <button id="heartButton" class="heart-button">点击显示爱心</button>
+            <div class="display-container" id="displayContainer">
+                <!-- 爱心显示区域 -->
+                <div class="heart-container" id="heartContainer">
+                    <div class="heart-shape" id="heartGrid"></div>
+                </div>
+                <!-- 轮播显示区域 -->
+                <div class="carousel-container" id="carouselContainer">
+                    <button class="carousel-btn prev" id="prevBtn">&lt;</button>
+                    <div class="carousel-content" id="carouselContent"></div>
+                    <button class="carousel-btn next" id="nextBtn">&gt;</button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 531的网页</p>
+        </footer>
+    </div>
+    <script>
+        const heartGrid = document.getElementById('heartGrid');
+        const heartContainer = document.getElementById('heartContainer');
+        const carouselContainer = document.getElementById('carouselContainer');
+        const carouselContent = document.getElementById('carouselContent');
+        const displayContainer = document.getElementById('displayContainer');
+        const heartButton = document.getElementById('heartButton');
+        let isHeartMode = true;
+        let autoPlayInterval;
+
+        // 扩展爱心形状位置定义，使用更多图片位置
+        const heartPositions = [
+            // 顶部弧形
+            {x: 3, y: 0, type: 'top-left'},
+            {x: 4, y: 0, type: 'top-left'},
+            {x: 5, y: 0, type: 'top-right'},
+            {x: 6, y: 0, type: 'top-right'},
+            // 第二行
+            {x: 2, y: 1, type: 'middle'},
+            {x: 3, y: 1, type: 'middle'},
+            {x: 4, y: 1, type: 'middle'},
+            {x: 5, y: 1, type: 'middle'},
+            {x: 6, y: 1, type: 'middle'},
+            {x: 7, y: 1, type: 'middle'},
+            // 第三行（最宽部分）
+            {x: 1, y: 2, type: 'middle'},
+            {x: 2, y: 2, type: 'middle'},
+            {x: 3, y: 2, type: 'middle'},
+            {x: 4, y: 2, type: 'middle'},
+            {x: 5, y: 2, type: 'middle'},
+            {x: 6, y: 2, type: 'middle'},
+            {x: 7, y: 2, type: 'middle'},
+            {x: 8, y: 2, type: 'middle'},
+            // 第四行
+            {x: 2, y: 3, type: 'middle'},
+            {x: 3, y: 3, type: 'middle'},
+            {x: 4, y: 3, type: 'middle'},
+            {x: 5, y: 3, type: 'middle'},
+            {x: 6, y: 3, type: 'middle'},
+            {x: 7, y: 3, type: 'middle'},
+            // 第五行
+            {x: 3, y: 4, type: 'middle'},
+            {x: 4, y: 4, type: 'middle'},
+            {x: 5, y: 4, type: 'middle'},
+            {x: 6, y: 4, type: 'middle'},
+            // 底部
+            {x: 4, y: 5, type: 'bottom'},
+            {x: 5, y: 5, type: 'bottom'}
+        ];
+
+        // 获取p文件夹中的图片
+        const images = [];
+        for(let i = 1; i <= 30; i++) {
+            images.push(`p/${i}.jpg`);
+        }
+
+        // 修改创建爱心网格的函数
+        function createHeartGrid() {
+            heartGrid.innerHTML = '';
+            const shuffledImages = [...images].sort(() => Math.random() - 0.5);
+            
+            heartPositions.forEach((pos, index) => {
+                if (index >= shuffledImages.length) return;
+                
+                const img = document.createElement('img');
+                img.src = shuffledImages[index];
+                img.alt = `爱心${index + 1}`;
+                img.className = 'heart-piece';
+                img.setAttribute('data-pos', pos.type);
+                img.style.gridColumn = `${pos.x + 1} / span 1`;
+                img.style.gridRow = `${pos.y + 1} / span 1`;
+                
+                heartGrid.appendChild(img);
+            });
+        }
+
+        // 修改轮播相关函数
+        function nextSlide() {
+            const items = document.querySelectorAll('.carousel-item');
+            items[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % items.length;
+            items[currentSlide].classList.add('active');
+        }
+
+        function prevSlide() {
+            const items = document.querySelectorAll('.carousel-item');
+            items[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide - 1 + items.length) % items.length;
+            items[currentSlide].classList.add('active');
+        }
+
+        // 开始自动播放
+        function startAutoPlay() {
+            autoPlayInterval = setInterval(nextSlide, 2000); // 每2秒切换一次
+        }
+
+        // 停止自动播放
+        function stopAutoPlay() {
+            clearInterval(autoPlayInterval);
+        }
+
+        // 创建轮播图
+        function createCarousel() {
+            carouselContent.innerHTML = '';
+            images.forEach((imgSrc, index) => {
+                const img = document.createElement('img');
+                img.src = imgSrc;
+                img.alt = `图片${index + 1}`;
+                img.className = 'carousel-item';
+                if (index === 0) img.classList.add('active');
+                carouselContent.appendChild(img);
+            });
+            
+            // 创建完轮播图后立即开始自动播放
+            startAutoPlay();
+        }
+
+        // 轮播控制
+        let currentSlide = 0;
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            stopAutoPlay(); // 手动点击时停止自动播放
+            nextSlide();
+            startAutoPlay(); // 重新开始自动播放
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            stopAutoPlay(); // 手动点击时停止自动播放
+            prevSlide();
+            startAutoPlay(); // 重新开始自动播放
+        });
+
+        // 鼠标悬停时暂停自动播放
+        carouselContainer.addEventListener('mouseenter', stopAutoPlay);
+        carouselContainer.addEventListener('mouseleave', startAutoPlay);
+
+        // 修改按钮点击事件
+        heartButton.addEventListener('click', function() {
+            if (!displayContainer.classList.contains('show')) {
+                // 首次显示
+                createHeartGrid();
+                displayContainer.classList.add('show');
+                heartContainer.style.display = 'flex';
+                carouselContainer.style.display = 'none';
+                heartButton.textContent = '切换显示方式';
+            } else {
+                // 切换显示模式
+                if (isHeartMode) {
+                    createCarousel(); // 会自动开始轮播
+                    heartContainer.style.display = 'none';
+                    carouselContainer.style.display = 'flex';
+                } else {
+                    stopAutoPlay(); // 切换回爱心模式时停止轮播
+                    createHeartGrid();
+                    heartContainer.style.display = 'flex';
+                    carouselContainer.style.display = 'none';
+                }
+                isHeartMode = !isHeartMode;
+            }
+        });
+    </script>
+</body>
+</html> 
