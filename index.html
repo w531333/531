@@ -26,6 +26,11 @@
                     <button class="carousel-btn next" id="nextBtn">&gt;</button>
                 </div>
             </div>
+            <!-- 在 main 中添加进度显示器 -->
+            <div id="loadingProgress" class="loading-progress">
+                <div class="progress-bar"></div>
+                <div class="progress-text">0%</div>
+            </div>
         </main>
 
         <footer>
@@ -42,21 +47,22 @@
         let isHeartMode = true;
         let autoPlayInterval;
 
-        // 扩展爱心形状位置定义，使用更多图片位置
+        // 修改爱心形状位置定义
         const heartPositions = [
-            // 顶部弧形
+            // 顶部两个凸起
+            {x: 2, y: 0, type: 'top-left'},
             {x: 3, y: 0, type: 'top-left'},
-            {x: 4, y: 0, type: 'top-left'},
+            {x: 4, y: 0, type: 'top-right'},
             {x: 5, y: 0, type: 'top-right'},
-            {x: 6, y: 0, type: 'top-right'},
-            // 第二行
+            // 第二行（扩展）
+            {x: 1, y: 1, type: 'middle'},
             {x: 2, y: 1, type: 'middle'},
             {x: 3, y: 1, type: 'middle'},
             {x: 4, y: 1, type: 'middle'},
             {x: 5, y: 1, type: 'middle'},
             {x: 6, y: 1, type: 'middle'},
-            {x: 7, y: 1, type: 'middle'},
-            // 第三行（最宽部分）
+            // 中间最宽部分
+            {x: 0, y: 2, type: 'middle'},
             {x: 1, y: 2, type: 'middle'},
             {x: 2, y: 2, type: 'middle'},
             {x: 3, y: 2, type: 'middle'},
@@ -64,22 +70,21 @@
             {x: 5, y: 2, type: 'middle'},
             {x: 6, y: 2, type: 'middle'},
             {x: 7, y: 2, type: 'middle'},
-            {x: 8, y: 2, type: 'middle'},
-            // 第四行
+            // 逐渐收窄
+            {x: 1, y: 3, type: 'middle'},
             {x: 2, y: 3, type: 'middle'},
             {x: 3, y: 3, type: 'middle'},
             {x: 4, y: 3, type: 'middle'},
             {x: 5, y: 3, type: 'middle'},
             {x: 6, y: 3, type: 'middle'},
-            {x: 7, y: 3, type: 'middle'},
-            // 第五行
+            // 继续收窄
+            {x: 2, y: 4, type: 'middle'},
             {x: 3, y: 4, type: 'middle'},
             {x: 4, y: 4, type: 'middle'},
             {x: 5, y: 4, type: 'middle'},
-            {x: 6, y: 4, type: 'middle'},
-            // 底部
-            {x: 4, y: 5, type: 'bottom'},
-            {x: 5, y: 5, type: 'bottom'}
+            // 底部尖角
+            {x: 3, y: 5, type: 'bottom'},
+            {x: 4, y: 5, type: 'bottom'}
         ];
 
         // 获取p文件夹中的图片
@@ -88,7 +93,46 @@
             images.push(`p/${i}.jpg`);
         }
 
-        // 修改创建爱心网格的函数
+        // 添加预加载函数
+        function preloadImages() {
+            const loadingProgress = document.getElementById('loadingProgress');
+            const progressBar = loadingProgress.querySelector('.progress-bar');
+            const progressText = loadingProgress.querySelector('.progress-text');
+            let loadedCount = 0;
+            
+            loadingProgress.style.display = 'block';
+            
+            const preloadPromises = images.map(src => {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    
+                    img.onload = () => {
+                        loadedCount++;
+                        const progress = (loadedCount / images.length) * 100;
+                        progressBar.style.width = `${progress}%`;
+                        progressText.textContent = `${Math.round(progress)}%`;
+                        resolve(img);
+                    };
+                    
+                    img.onerror = reject;
+                    img.src = src;
+                });
+            });
+
+            return Promise.all(preloadPromises).finally(() => {
+                loadingProgress.style.display = 'none';
+            });
+        }
+
+        // 添加图片缓存
+        const imageCache = new Map();
+
+        // 创建一个全屏显示原图的容器
+        const fullscreenContainer = document.createElement('div');
+        fullscreenContainer.className = 'fullscreen-container';
+        document.body.appendChild(fullscreenContainer);
+
+        // 修改 createHeartGrid 函数，添加点击事件
         function createHeartGrid() {
             heartGrid.innerHTML = '';
             const shuffledImages = [...images].sort(() => Math.random() - 0.5);
@@ -97,14 +141,40 @@
                 if (index >= shuffledImages.length) return;
                 
                 const img = document.createElement('img');
-                img.src = shuffledImages[index];
+                const src = shuffledImages[index];
+                
+                if (imageCache.has(src)) {
+                    img.src = imageCache.get(src).src;
+                } else {
+                    img.src = src;
+                    imageCache.set(src, img);
+                }
+                
                 img.alt = `爱心${index + 1}`;
                 img.className = 'heart-piece';
                 img.setAttribute('data-pos', pos.type);
                 img.style.gridColumn = `${pos.x + 1} / span 1`;
                 img.style.gridRow = `${pos.y + 1} / span 1`;
                 
+                // 添加点击事件
+                img.addEventListener('click', () => {
+                    showFullscreenImage(src);
+                });
+                
                 heartGrid.appendChild(img);
+            });
+        }
+
+        // 添加显示原图的函数
+        function showFullscreenImage(src) {
+            fullscreenContainer.innerHTML = `<img src="${src}" alt="原图">`;
+            fullscreenContainer.style.display = 'flex';
+            
+            // 点击图片外部区域关闭
+            fullscreenContainer.addEventListener('click', (e) => {
+                if (e.target === fullscreenContainer) {
+                    fullscreenContainer.style.display = 'none';
+                }
             });
         }
 
@@ -168,7 +238,25 @@
         carouselContainer.addEventListener('mouseleave', startAutoPlay);
 
         // 修改按钮点击事件
-        heartButton.addEventListener('click', function() {
+        heartButton.addEventListener('click', async function() {
+            if (!this.dataset.loaded) {
+                // 第一次点击时预加载所有图片
+                heartButton.textContent = '加载中...';
+                heartButton.disabled = true;
+                
+                try {
+                    await preloadImages();
+                    this.dataset.loaded = 'true';
+                    heartButton.textContent = '切换显示方式';
+                    heartButton.disabled = false;
+                } catch (error) {
+                    console.error('图片加载失败:', error);
+                    heartButton.textContent = '重试';
+                    heartButton.disabled = false;
+                    return;
+                }
+            }
+
             if (!displayContainer.classList.contains('show')) {
                 // 首次显示
                 createHeartGrid();
